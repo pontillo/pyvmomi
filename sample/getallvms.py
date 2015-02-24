@@ -47,6 +47,8 @@ def GetArgs():
                        help='User name to use when connecting to host')
    parser.add_argument('-p', '--password', required=False, action='store',
                        help='Password to use when connecting to host')
+   parser.add_argument('-v', '--verbose', required=False, action='store_true',
+                       help='Enable verbose logging of web requests')
    args = parser.parse_args()
    return args
 
@@ -80,9 +82,30 @@ def PrintVmInfo(vm, depth=1):
       ip = summary.guest.ipAddress
       if ip != None and ip != "":
          print("IP         : ", ip)
+
+   for device in vm.config.hardware.device:
+      if hasattr(device, 'macAddress'):
+         mac = device.macAddress
+         if mac != None and mac != "":
+            print("MAC        : ", mac)
+
    if summary.runtime.question != None:
       print("Question  : ", summary.runtime.question.text)
    print("")
+
+def enableLogging():
+   import requests
+   import logging
+   import httplib
+
+   httplib.HTTPConnection.debuglevel = 1
+
+   logging.basicConfig()
+   logging.getLogger().setLevel(logging.DEBUG)
+   requests_log = logging.getLogger("requests.packages.urllib3")
+   requests_log.setLevel(logging.DEBUG)
+   requests_log.propagate = True
+
 
 def main():
    """
@@ -95,6 +118,9 @@ def main():
    else:
       password = getpass.getpass(prompt='Enter password for host %s and '
                                         'user %s: ' % (args.host,args.user))
+
+   if args.verbose:
+      enableLogging()
 
    si = SmartConnect(host=args.host,
                      user=args.user,
