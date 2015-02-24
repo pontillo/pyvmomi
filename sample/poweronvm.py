@@ -40,8 +40,23 @@ def GetArgs():
    parser.add_argument('-u', '--user', required=True, action='store', help='User name to use when connecting to host')
    parser.add_argument('-p', '--password', required=False, action='store', help='Password to use when connecting to host')
    parser.add_argument('-v', '--vmname', required=True, action='append', help='Names of the Virtual Machines to power on')
+   parser.add_argument('--verbose', required=False, action='store_true', help='Enable verbose logging of web requests')
+   parser.add_argument('--off', required=False, action='store_true', help='Power off the specified VMs')
    args = parser.parse_args()
    return args
+
+def enableLogging():
+   import requests
+   import logging
+   import httplib
+
+   httplib.HTTPConnection.debuglevel = 1
+
+   logging.basicConfig()
+   logging.getLogger().setLevel(logging.DEBUG)
+   requests_log = logging.getLogger("requests.packages.urllib3")
+   requests_log.setLevel(logging.DEBUG)
+   requests_log.propagate = True
 
 def WaitForTasks(tasks, si):
    """
@@ -106,6 +121,9 @@ def main():
    else:
       password = getpass.getpass(prompt='Enter password for host %s and user %s: ' % (args.host,args.user))
 
+   if args.verbose:
+      enableLogging()
+
    try:
       vmnames = args.vmname
       if not len(vmnames):
@@ -136,7 +154,10 @@ def main():
       objView.Destroy()
 
       # Find the vm and power it on
-      tasks = [vm.PowerOn() for vm in vmList if vm.name in vmnames]
+      if args.off:
+         tasks = [vm.PowerOff() for vm in vmList if vm.name in vmnames]
+      else:
+         tasks = [vm.PowerOn() for vm in vmList if vm.name in vmnames]
 
       # Wait for power on to complete
       WaitForTasks(tasks, si)
